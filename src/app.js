@@ -16,11 +16,7 @@ app.get("/categories",(req, res) => {
 
 app.post("/categories", (req, res) => {
     const {name} = req.body
-    console.log(name);
-    connection.query('INSERT INTO categories (name) VALUES ($1)',[name]).then(categories=>{res.send(categories.rows)});
-
-
-
+    connection.query('INSERT INTO categories (name) VALUES ($1)',[name]).then(()=>{res.sendStatus(201)});
 });
 app.get("/rentals", (req, res) => {});
 app.get("/rentals", (req, res) => {});
