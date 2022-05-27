@@ -36,7 +36,9 @@ app.get("/games", (req, res) => {
 app.post("/games", (req, res) => {
   const game = req.body;
   console.log(game);
-   connection.query(`
+  connection
+    .query(
+      `
    INSERT INTO games ("name","image","stockTotal","categoryId","pricePerDay")
    VALUES ($1,$2,$3,$4,$5)`,
       [
@@ -54,23 +56,25 @@ app.post("/games", (req, res) => {
 
 // CUSTOMERS
 app.get("/customers", (req, res) => {
-  connection
-    .query(
-      'SELECT * FROM customers'
-    )
-    .then((games) => {
-      res.send(games.rows);
-    });
+  connection.query("SELECT * FROM customers").then((games) => {
+    res.send(games.rows);
+  });
 });
 
-
-
-
-
-
-
-
-
+app.post("/customers", (req, res) => {
+  const customer = req.body;
+  console.log(customer);
+  connection
+    .query(
+      `
+   INSERT INTO customers (name,phone,cpf,birthday)
+   VALUES ($1,$2,$3,$4)`,
+      [customer.name, customer.phone, customer.cpf, customer.birthday]
+    )
+    .then(() => {
+      res.sendStatus(201);
+    });
+});
 
 const port = process.env.PORT;
 app.listen(port, () =>
