@@ -80,6 +80,22 @@ app.post("/customers", (req, res) => {
       res.sendStatus(201);
     });
 });
+app.put("/customers/:id", (req, res) => {
+  console.log(req.body);
+  const customer = req.body;
+  const {id} = req.params
+  console.log(id);
+  connection
+    .query(
+      `
+   UPDATE customers SET name=$1,phone=$2,cpf=$3,birthday=$4 WHERE id=$5`,
+      [customer.name, customer.phone, customer.cpf, customer.birthday,id]
+    )
+    .then(() => {
+      res.sendStatus(200);
+    });
+});
+
 
 
 
