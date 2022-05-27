@@ -52,6 +52,26 @@ app.post("/games", (req, res) => {
     });
 });
 
+// CUSTOMERS
+app.get("/customers", (req, res) => {
+  connection
+    .query(
+      'SELECT * FROM customers'
+    )
+    .then((games) => {
+      res.send(games.rows);
+    });
+});
+
+
+
+
+
+
+
+
+
+
 const port = process.env.PORT;
 app.listen(port, () =>
   console.log(chalk.bold.green(`Servidor em pé na porta ${port}`))
