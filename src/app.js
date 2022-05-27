@@ -60,7 +60,12 @@ app.get("/customers", (req, res) => {
     res.send(games.rows);
   });
 });
-
+app.get("/customers/:id", (req, res) => {
+  const {id}= (req.params);
+  connection.query("SELECT * FROM customers WHERE id=$1",[id]).then((games) => {
+    res.send(games.rows[0]);
+  });
+});
 app.post("/customers", (req, res) => {
   const customer = req.body;
   console.log(customer);
@@ -75,6 +80,10 @@ app.post("/customers", (req, res) => {
       res.sendStatus(201);
     });
 });
+
+
+
+
 
 const port = process.env.PORT;
 app.listen(port, () =>
