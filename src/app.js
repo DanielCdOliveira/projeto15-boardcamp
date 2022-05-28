@@ -132,7 +132,7 @@ app.get("/rentals", async (req, res) => {
     ON rentals."gameId"=categories.id
   JOIN games 
     ON rentals."gameId"=games.id`);
-const rentals = rentalsResult.rows.map((e) => {
+  const rentals = rentalsResult.rows.map((e) => {
     return {
       ...e,
       customer: {
@@ -147,7 +147,50 @@ const rentals = rentalsResult.rows.map((e) => {
       },
     };
   });
-res.send(rentals)
+  res.send(rentals);
+});
+
+app.post("/rentals/:id/return", async (req, res) => {
+  const { id } = req.params;
+  const date = dayjs().format("YYYY-MM-DD");
+  try {
+    const rental = await (
+      await connection.query(
+        `
+     SELECT "rentDate","daysRented","originalPrice" FROM rentals
+    WHERE id = $1  
+    `,
+        [id]
+      )
+    ).rows[0];
+    if (!rental) return res.sendStatus(400);
+    if (rental.returnDate) return res.sendStatus(400);
+    const pricePerDay = rental.originalPrice / rental.daysRented;
+    const day1 = new Date(rental.rentDate);
+    const day2 = new Date(date);
+    const difference = Math.abs(day2 - day1);
+    let days = difference / (1000 * 3600 * 24) + 0.125;
+    if (days > rental.daysRented) {
+      await connection.query(
+        `
+      UPDATE rentals SET "returnDate"=$1,"delayFee"=$2 where id = $3      
+      `,
+        [date, (days - rental.daysRented) * pricePerDay, id]
+      );
+    } else {
+
+      await connection.query(
+        `
+      UPDATE rentals SET "returnDate"=$1 where id = $2      
+      `,
+        [date, id]
+      );
+    }
+
+    res.sendStatus(200);
+  } catch  {
+    res.sendStatus(500)
+  }
 });
 
 const port = process.env.PORT;
