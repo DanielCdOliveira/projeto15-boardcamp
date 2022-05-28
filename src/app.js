@@ -115,11 +115,39 @@ app.post("/rentals", async (req, res) => {
       `
    INSERT INTO rentals ("customerId","gameId","daysRented","rentDate","originalPrice")
    VALUES ($1,$2,$3,$4,$5)`,
-      [rental.customerId, rental.gameId,rental.daysRented,date,originalPrice]
+      [rental.customerId, rental.gameId, rental.daysRented, date, originalPrice]
     )
     .then(() => {
       res.sendStatus(201);
     });
+});
+
+app.get("/rentals", async (req, res) => {
+  const rentalsResult = await connection.query(`
+  SELECT rentals.*, customers.name as "customerName", categories.name as "categoryName",games."categoryId",games.name as "gameName" 
+  FROM rentals 
+  JOIN customers 
+    ON rentals."customerId"=customers.id 
+  JOIN categories 
+    ON rentals."gameId"=categories.id
+  JOIN games 
+    ON rentals."gameId"=games.id`);
+const rentals = rentalsResult.rows.map((e) => {
+    return {
+      ...e,
+      customer: {
+        id: e.customerId,
+        name: e.customerName,
+      },
+      game: {
+        id: e.gameId,
+        name: e.gameName,
+        categoryId: e.categoryId,
+        categoryName: e.categoryName,
+      },
+    };
+  });
+res.send(rentals)
 });
 
 const port = process.env.PORT;
