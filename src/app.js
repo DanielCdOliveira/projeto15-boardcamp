@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import dayjs from "dayjs";
 import connection from "./db.js";
 
+
 const app = express();
 app.use(cors());
 app.use(json());
@@ -52,7 +53,8 @@ app.get("/games", (req, res) => {
           res.send(games.rows);
         });
     } else {
-      name = name + "%";
+      name = name.toLowerCase() + "%";
+      console.log(name);
       connection
         .query(
           `SELECT  games.*, categories.name as "categoryName" 
@@ -70,9 +72,26 @@ app.get("/games", (req, res) => {
     res.sendStatus(500);
   }
 });
-app.post("/games", (req, res) => {
+app.post("/games",async (req, res) => {
   const game = req.body;
   console.log(game);
+try {
+  const categories = await connection.query(
+    `
+    SELECT * FROM categories WHERE id = $1
+      `
+  ,[game.categoryId]);
+  console.log(categories.rows);
+  if (game.name === "" || game.stockTotal <= 0 || game.pricePerDay <= 0 || categories.rowCount === 0)return res.sendStatus(400);
+  const games = await connection.query(
+    `
+    SELECT * FROM games
+    WHERE LOWER(games.name) LIKE $1
+      `
+  ,[game.name.toLowerCase()+'%']);
+  console.log(games);
+  if(games.rowCount !== 0) return res.sendStatus(409)
+
   connection
     .query(
       `
@@ -89,6 +108,10 @@ app.post("/games", (req, res) => {
     .then(() => {
       res.sendStatus(201);
     });
+} catch  {
+  res.sendStatus(500)
+}
+  
 });
 
 // CUSTOMERS
