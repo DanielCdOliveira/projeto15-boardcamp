@@ -163,7 +163,7 @@ app.post("/rentals/:id/return", async (req, res) => {
         [id]
       )
     ).rows[0];
-    if (!rental) return res.sendStatus(400);
+    if (!rental) return res.sendStatus(404);
     if (rental.returnDate) return res.sendStatus(400);
     const pricePerDay = rental.originalPrice / rental.daysRented;
     const day1 = new Date(rental.rentDate);
@@ -178,7 +178,6 @@ app.post("/rentals/:id/return", async (req, res) => {
         [date, (days - rental.daysRented) * pricePerDay, id]
       );
     } else {
-
       await connection.query(
         `
       UPDATE rentals SET "returnDate"=$1 where id = $2      
@@ -188,9 +187,25 @@ app.post("/rentals/:id/return", async (req, res) => {
     }
 
     res.sendStatus(200);
-  } catch  {
-    res.sendStatus(500)
+  } catch {
+    res.sendStatus(500);
   }
+});
+
+app.delete("/rentals/:id", async (req, res) => {
+  const {id} = req.params
+  console.log();
+  const rental =  (await connection.query(`SELECT * FROM rentals WHERE id=$1`, [
+    id
+  ])).rows;
+  console.log(rental);
+  if(!rental) return res.sendStatus(404)
+  if(rental.returnDate) return res.sendStatus(400)
+  await connection.query(`DELETE FROM rentals WHERE id=$1`, [
+    id
+  ])
+  res.sendStatus(200)
+
 });
 
 const port = process.env.PORT;
