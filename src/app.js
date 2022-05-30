@@ -453,7 +453,7 @@ app.delete("/rentals/:id", async (req, res) => {
   res.sendStatus(200);
 });
 
-const port = process.env.PORT;
+const port = process.env.PORT || 4000;
 app.listen(port, () =>
   console.log(chalk.bold.green(`Servidor em pé na porta ${port}`))
 );
