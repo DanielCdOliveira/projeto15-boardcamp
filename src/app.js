@@ -38,7 +38,7 @@ app.post("/categories", async (req, res) => {
 // GAMES
 app.get("/games", (req, res) => {
   let name = req.query.name;
-  name = name + "%";
+  console.log(name);
   try {
     if (!name) {
       connection
@@ -52,6 +52,7 @@ app.get("/games", (req, res) => {
           res.send(games.rows);
         });
     } else {
+      name = name + "%";
       connection
         .query(
           `SELECT  games.*, categories.name as "categoryName" 
