@@ -15,8 +15,15 @@ app.get("/categories", (req, res) => {
     res.send(categories.rows);
   });
 });
-app.post("/categories", (req, res) => {
+app.post("/categories",async (req, res) => {
   const { name } = req.body;
+  console.log(name);
+  if(name === "") return res.sendStatus(400)
+  const categories = (await connection.query("SELECT * FROM categories")).rows
+  console.log(categories);
+  categories.forEach(e=>{
+    if (e.name === name)return res.sendStatus(409)
+  })
   connection
     .query("INSERT INTO categories (name) VALUES ($1)", [name])
     .then(() => {
