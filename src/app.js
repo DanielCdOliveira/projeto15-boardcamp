@@ -15,30 +15,59 @@ app.get("/categories", (req, res) => {
     res.send(categories.rows);
   });
 });
-app.post("/categories",async (req, res) => {
+app.post("/categories", async (req, res) => {
   const { name } = req.body;
   console.log(name);
-  if(name === "") return res.sendStatus(400)
-  const categories = (await connection.query("SELECT * FROM categories")).rows
-  console.log(categories);
-  categories.forEach(e=>{
-    if (e.name === name)return res.sendStatus(409)
-  })
-  connection
-    .query("INSERT INTO categories (name) VALUES ($1)", [name])
-    .then(() => {
-      res.sendStatus(201);
+  if (name === "") return res.sendStatus(400);
+  try {
+    const categories = (await connection.query("SELECT * FROM categories"))
+      .rows;
+    console.log(categories);
+    categories.forEach((e) => {
+      if (e.name === name) return res.sendStatus(409);
     });
+    connection
+      .query("INSERT INTO categories (name) VALUES ($1)", [name])
+      .then(() => {
+        res.sendStatus(201);
+      });
+  } catch (error) {
+    res.sendStatus(500);
+  }
 });
 // GAMES
 app.get("/games", (req, res) => {
-  connection
-    .query(
-      'SELECT  games.*, categories.name as "categoryName" FROM games JOIN categories ON games."categoryId"=categories.id'
-    )
-    .then((games) => {
-      res.send(games.rows);
-    });
+  let name = req.query.name;
+  name = name + "%";
+  try {
+    if (!name) {
+      connection
+        .query(
+          `SELECT  games.*, categories.name as "categoryName" 
+        FROM games 
+        JOIN categories 
+        ON games."categoryId"=categories.id`
+        )
+        .then((games) => {
+          res.send(games.rows);
+        });
+    } else {
+      connection
+        .query(
+          `SELECT  games.*, categories.name as "categoryName" 
+        FROM games
+        JOIN categories 
+        ON games."categoryId"=categories.id WHERE LOWER(games.name) LIKE $1`,
+          [name]
+        )
+        .then((games) => {
+          console.log(games.rows);
+          res.send(games.rows);
+        });
+    }
+  } catch {
+    res.sendStatus(500);
+  }
 });
 app.post("/games", (req, res) => {
   const game = req.body;
@@ -200,19 +229,16 @@ app.post("/rentals/:id/return", async (req, res) => {
 });
 
 app.delete("/rentals/:id", async (req, res) => {
-  const {id} = req.params
+  const { id } = req.params;
   console.log();
-  const rental =  (await connection.query(`SELECT * FROM rentals WHERE id=$1`, [
-    id
-  ])).rows;
+  const rental = (
+    await connection.query(`SELECT * FROM rentals WHERE id=$1`, [id])
+  ).rows;
   console.log(rental);
-  if(!rental) return res.sendStatus(404)
-  if(rental.returnDate) return res.sendStatus(400)
-  await connection.query(`DELETE FROM rentals WHERE id=$1`, [
-    id
-  ])
-  res.sendStatus(200)
-
+  if (!rental) return res.sendStatus(404);
+  if (rental.returnDate) return res.sendStatus(400);
+  await connection.query(`DELETE FROM rentals WHERE id=$1`, [id]);
+  res.sendStatus(200);
 });
 
 const port = process.env.PORT;
