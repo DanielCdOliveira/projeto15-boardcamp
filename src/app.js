@@ -4,7 +4,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import dayjs from "dayjs";
 import connection from "./db.js";
-import joi from "joi"
+import joi from "joi";
 
 const app = express();
 app.use(cors());
@@ -13,14 +13,18 @@ dotenv.config();
 // joi
 const customerSchema = joi.object({
   name: joi.string().min(1).required(),
-  phone: joi.string().pattern(/[0-9]{10,11}/).max(11).required(),
-  cpf: joi.string().pattern(/[0-9]{11}/).max(11).required(),
-  birthday: joi.date().required()
-})
-
-
-
-
+  phone: joi
+    .string()
+    .pattern(/[0-9]{10,11}/)
+    .max(11)
+    .required(),
+  cpf: joi
+    .string()
+    .pattern(/[0-9]{11}/)
+    .max(11)
+    .required(),
+  birthday: joi.date().required(),
+});
 
 // CATEGORIES
 app.get("/categories", (req, res) => {
@@ -84,66 +88,75 @@ app.get("/games", (req, res) => {
     res.sendStatus(500);
   }
 });
-app.post("/games",async (req, res) => {
+app.post("/games", async (req, res) => {
   const game = req.body;
   console.log(game);
-try {
-  const categories = await connection.query(
-    `
-    SELECT * FROM categories WHERE id = $1
+  try {
+    const categories = await connection.query(
       `
-  ,[game.categoryId]);
-  console.log(categories.rows);
-  if (game.name === "" || game.stockTotal <= 0 || game.pricePerDay <= 0 || categories.rowCount === 0)return res.sendStatus(400);
-  const games = await connection.query(
-    `
+    SELECT * FROM categories WHERE id = $1
+      `,
+      [game.categoryId]
+    );
+    console.log(categories.rows);
+    if (
+      game.name === "" ||
+      game.stockTotal <= 0 ||
+      game.pricePerDay <= 0 ||
+      categories.rowCount === 0
+    )
+      return res.sendStatus(400);
+    const games = await connection.query(
+      `
     SELECT * FROM games
     WHERE LOWER(games.name) LIKE $1
-      `
-  ,[game.name.toLowerCase()+'%']);
-  console.log(games);
-  if(games.rowCount !== 0) return res.sendStatus(409)
+      `,
+      [game.name.toLowerCase() + "%"]
+    );
+    console.log(games);
+    if (games.rowCount !== 0) return res.sendStatus(409);
 
-  connection
-    .query(
-      `
+    connection
+      .query(
+        `
    INSERT INTO games ("name","image","stockTotal","categoryId","pricePerDay")
    VALUES ($1,$2,$3,$4,$5)`,
-      [
-        game.name,
-        game.image,
-        game.stockTotal,
-        game.categoryId,
-        game.pricePerDay,
-      ]
-    )
-    .then(() => {
-      res.sendStatus(201);
-    });
-} catch  {
-  res.sendStatus(500)
-}
-  
+        [
+          game.name,
+          game.image,
+          game.stockTotal,
+          game.categoryId,
+          game.pricePerDay,
+        ]
+      )
+      .then(() => {
+        res.sendStatus(201);
+      });
+  } catch {
+    res.sendStatus(500);
+  }
 });
 
 // CUSTOMERS
 app.get("/customers", (req, res) => {
-  let cpf = req.query.cpf
+  let cpf = req.query.cpf;
 
-try {
-    if(cpf){
-    cpf+="%"
- connection.query("SELECT * FROM customers WHERE cpf LIKE $1",[cpf]).then((games) => {
-    res.send(games.rows);
-  });
-  }else{
+  try {
+    if (cpf) {
+      cpf += "%";
+      connection
+        .query("SELECT * FROM customers WHERE cpf LIKE $1", [cpf])
+        .then((games) => {
+          res.send(games.rows);
+        });
+    } else {
       connection.query("SELECT * FROM customers").then((games) => {
-    res.send(games.rows);
-  });
+        res.send(games.rows);
+      });
+    }
+  } catch {
+    res.sendStatus(500);
   }
-} catch  {
-  res.sendStatus(500)
-}
 });
 app.get("/customers/:id", (req, res) => {
   const { id } = req.params;
@@ -153,51 +166,86 @@ app.get("/customers/:id", (req, res) => {
       res.send(games.rows[0]);
     });
 });
-app.post("/customers",async (req, res) => {
+app.post("/customers", async (req, res) => {
   const customer = req.body;
   console.log(customer);
   try {
-    const validateCustomer = await customerSchema.validateAsync(req.body)
-    let cpf = await connection
-    .query(
+    const validateCustomer = await customerSchema.validateAsync(req.body);
+    let cpf = await connection.query(
       `
    SELECT * FROM customers WHERE cpf = $1
-    `,[customer.cpf]
-    )
+    `,
+      [customer.cpf]
+    );
     console.log(cpf);
-    if(cpf.rowCount >0) return res.sendStatus(409)
-      connection
-    .query(
-      `
+    if (cpf.rowCount > 0) return res.sendStatus(409);
+    connection
+      .query(
+        `
    INSERT INTO customers (name,phone,cpf,birthday)
    VALUES ($1,$2,$3,$4)`,
-      [customer.name, customer.phone, customer.cpf, customer.birthday]
-    )
-    .then(() => {
-      res.sendStatus(201);
-    });
+        [customer.name, customer.phone, customer.cpf, customer.birthday]
+      )
+      .then(() => {
+        res.sendStatus(201);
+      });
   } catch (error) {
-    if(error.isJoi){
-      return res.sendStatus(400)
+    if (error.isJoi) {
+      return res.sendStatus(400);
+    }
+    res.sendStatus(500);
   }
-  res.sendStatus(500)
-  }
-
 });
-app.put("/customers/:id", (req, res) => {
+app.put("/customers/:id", async (req, res) => {
   console.log(req.body);
   const customer = req.body;
   const { id } = req.params;
   console.log(id);
-  connection
-    .query(
+
+  try {
+    const validateCustomer = await customerSchema.validateAsync(req.body);
+    let customerCpf = (await connection.query(
       `
-   UPDATE customers SET name=$1,phone=$2,cpf=$3,birthday=$4 WHERE id=$5`,
-      [customer.name, customer.phone, customer.cpf, customer.birthday, id]
-    )
-    .then(() => {
-      res.sendStatus(200);
-    });
+   SELECT customers.cpf FROM customers WHERE id=$1 
+    `,
+      [id]
+    )).rows[0];
+    if(customerCpf.cpf === customer.cpf){
+      console.log("igual");
+        connection
+        .query(
+          `
+     UPDATE customers SET name=$1,phone=$2,cpf=$3,birthday=$4 WHERE id=$5`,
+          [customer.name, customer.phone, customer.cpf, customer.birthday, id]
+        )
+        .then(() => {
+         return res.sendStatus(200);
+        });
+        return
+    }
+      let cpf = (await connection.query(
+        `
+     SELECT customers.cpf FROM customers WHERE cpf=$1
+      `,
+        [customer.cpf]
+      ));
+      console.log("cpf",cpf);
+      if (cpf.rowCount > 0) return res.sendStatus(409);
+      connection
+        .query(
+          `
+     UPDATE customers SET name=$1,phone=$2,cpf=$3,birthday=$4 WHERE id=$5`,
+          [customer.name, customer.phone, customer.cpf, customer.birthday, id]
+        )
+        .then(() => {
+         return res.sendStatus(200);
+        });
+  } catch (error) {
+    if (error.isJoi) {
+      return res.sendStatus(400);
+    }
+    res.sendStatus(500);
+  }
 });
 
 // RENTALS
