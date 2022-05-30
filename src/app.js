@@ -254,24 +254,47 @@ app.put("/customers/:id", async (req, res) => {
 app.post("/rentals", async (req, res) => {
   const rental = req.body;
   const date = dayjs().format("YYYY-MM-DD");
-  const originalPrice =
-    (await (
-      await connection.query(
-        `SELECT games."pricePerDay" FROM games WHERE id=$1`,
-        [rental.gameId]
-      )
-    ).rows[0].pricePerDay) * rental.daysRented;
-  console.log(originalPrice);
-  connection
-    .query(
+  try {
+    if (rental.daysRented <= 0) return res.sendStatus(400);
+    const customer = await connection.query(
       `
+      SELECT * FROM customers WHERE id = $1
+`,[rental.customerId]);
+console.log(customer.rowCount);
+if(customer.rowCount <= 0)return res.sendStatus(400);
+const game = await connection.query(
+  `
+  SELECT * FROM games WHERE id = $1
+`,[rental.customerId]);
+console.log(game.rowCount);
+if(game.rowCount <= 0)return res.sendStatus(400);
+    const originalPrice =
+      (await (
+        await connection.query(
+          `SELECT games."pricePerDay" FROM games WHERE id=$1`,
+          [rental.gameId]
+        )
+      ).rows[0].pricePerDay) * rental.daysRented;
+    console.log(originalPrice);
+    connection
+      .query(
+        `
    INSERT INTO rentals ("customerId","gameId","daysRented","rentDate","originalPrice")
    VALUES ($1,$2,$3,$4,$5)`,
-      [rental.customerId, rental.gameId, rental.daysRented, date, originalPrice]
-    )
-    .then(() => {
-      res.sendStatus(201);
-    });
+        [
+          rental.customerId,
+          rental.gameId,
+          rental.daysRented,
+          date,
+          originalPrice,
+        ]
+      )
+      .then(() => {
+        res.sendStatus(201);
+      });
+  } catch (error) {
+    res.sendStatus(500)
+  }
 });
 
 app.get("/rentals", async (req, res) => {
