@@ -4,12 +4,24 @@ import cors from "cors";
 import dotenv from "dotenv";
 import dayjs from "dayjs";
 import connection from "./db.js";
-
+import joi from "joi"
 
 const app = express();
 app.use(cors());
 app.use(json());
 dotenv.config();
+// joi
+const customerSchema = joi.object({
+  name: joi.string().min(1).required(),
+  phone: joi.string().pattern(/[0-9]{10,11}/).max(11).required(),
+  cpf: joi.string().pattern(/[0-9]{11}/).max(11).required(),
+  birthday: joi.date().required()
+})
+
+
+
+
+
 // CATEGORIES
 app.get("/categories", (req, res) => {
   connection.query("SELECT * FROM categories").then((categories) => {
@@ -141,10 +153,20 @@ app.get("/customers/:id", (req, res) => {
       res.send(games.rows[0]);
     });
 });
-app.post("/customers", (req, res) => {
+app.post("/customers",async (req, res) => {
   const customer = req.body;
   console.log(customer);
-  connection
+  try {
+    const validateCustomer = await customerSchema.validateAsync(req.body)
+    let cpf = await connection
+    .query(
+      `
+   SELECT * FROM customers WHERE cpf = $1
+    `,[customer.cpf]
+    )
+    console.log(cpf);
+    if(cpf.rowCount >0) return res.sendStatus(409)
+      connection
     .query(
       `
    INSERT INTO customers (name,phone,cpf,birthday)
@@ -154,6 +176,13 @@ app.post("/customers", (req, res) => {
     .then(() => {
       res.sendStatus(201);
     });
+  } catch (error) {
+    if(error.isJoi){
+      return res.sendStatus(400)
+  }
+  res.sendStatus(500)
+  }
+
 });
 app.put("/customers/:id", (req, res) => {
   console.log(req.body);
