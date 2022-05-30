@@ -116,9 +116,22 @@ try {
 
 // CUSTOMERS
 app.get("/customers", (req, res) => {
-  connection.query("SELECT * FROM customers").then((games) => {
+  let cpf = req.query.cpf
+
+try {
+    if(cpf){
+    cpf+="%"
+ connection.query("SELECT * FROM customers WHERE cpf LIKE $1",[cpf]).then((games) => {
     res.send(games.rows);
   });
+  }else{
+      connection.query("SELECT * FROM customers").then((games) => {
+    res.send(games.rows);
+  });
+  }
+} catch  {
+  res.sendStatus(500)
+}
 });
 app.get("/customers/:id", (req, res) => {
   const { id } = req.params;
