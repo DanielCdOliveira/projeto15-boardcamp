@@ -204,33 +204,16 @@ app.put("/customers/:id", async (req, res) => {
 
   try {
     const validateCustomer = await customerSchema.validateAsync(req.body);
-    let customerCpf = (await connection.query(
-      `
+    let customerCpf = (
+      await connection.query(
+        `
    SELECT customers.cpf FROM customers WHERE id=$1 
     `,
-      [id]
-    )).rows[0];
-    if(customerCpf.cpf === customer.cpf){
+        [id]
+      )
+    ).rows[0];
+    if (customerCpf.cpf === customer.cpf) {
       console.log("igual");
-        connection
-        .query(
-          `
-     UPDATE customers SET name=$1,phone=$2,cpf=$3,birthday=$4 WHERE id=$5`,
-          [customer.name, customer.phone, customer.cpf, customer.birthday, id]
-        )
-        .then(() => {
-         return res.sendStatus(200);
-        });
-        return
-    }
-      let cpf = (await connection.query(
-        `
-     SELECT customers.cpf FROM customers WHERE cpf=$1
-      `,
-        [customer.cpf]
-      ));
-      console.log("cpf",cpf);
-      if (cpf.rowCount > 0) return res.sendStatus(409);
       connection
         .query(
           `
@@ -238,8 +221,27 @@ app.put("/customers/:id", async (req, res) => {
           [customer.name, customer.phone, customer.cpf, customer.birthday, id]
         )
         .then(() => {
-         return res.sendStatus(200);
+          return res.sendStatus(200);
         });
+      return;
+    }
+    let cpf = await connection.query(
+      `
+     SELECT customers.cpf FROM customers WHERE cpf=$1
+      `,
+      [customer.cpf]
+    );
+    console.log("cpf", cpf);
+    if (cpf.rowCount > 0) return res.sendStatus(409);
+    connection
+      .query(
+        `
+     UPDATE customers SET name=$1,phone=$2,cpf=$3,birthday=$4 WHERE id=$5`,
+        [customer.name, customer.phone, customer.cpf, customer.birthday, id]
+      )
+      .then(() => {
+        return res.sendStatus(200);
+      });
   } catch (error) {
     if (error.isJoi) {
       return res.sendStatus(400);
@@ -273,7 +275,46 @@ app.post("/rentals", async (req, res) => {
 });
 
 app.get("/rentals", async (req, res) => {
-  const rentalsResult = await connection.query(`
+  const customerId = req.query.customerId;
+  const gameId = req.query.gameId;
+  console.log(customerId);
+  console.log(gameId);
+
+  try {
+    if (customerId) {
+      const rentalsResult = await connection.query(
+        `
+    SELECT rentals.*, customers.name as "customerName", categories.name as "categoryName",games."categoryId",games.name as "gameName" 
+    FROM rentals 
+    JOIN customers 
+      ON rentals."customerId"=customers.id 
+    JOIN categories 
+      ON rentals."gameId"=categories.id
+    JOIN games 
+      ON rentals."gameId"=games.id
+    WHERE customers.id = $1`,
+        [customerId]
+      );
+      const rentals = rentalsResult.rows.map((e) => {
+        return {
+          ...e,
+          customer: {
+            id: e.customerId,
+            name: e.customerName,
+          },
+          game: {
+            id: e.gameId,
+            name: e.gameName,
+            categoryId: e.categoryId,
+            categoryName: e.categoryName,
+          },
+        };
+      });
+      return res.send(rentals);
+    } else if (gameId) {
+      console.log("entriu");
+      const rentalsResult = await connection.query(
+        `
   SELECT rentals.*, customers.name as "customerName", categories.name as "categoryName",games."categoryId",games.name as "gameName" 
   FROM rentals 
   JOIN customers 
@@ -281,23 +322,57 @@ app.get("/rentals", async (req, res) => {
   JOIN categories 
     ON rentals."gameId"=categories.id
   JOIN games 
-    ON rentals."gameId"=games.id`);
-  const rentals = rentalsResult.rows.map((e) => {
-    return {
-      ...e,
-      customer: {
-        id: e.customerId,
-        name: e.customerName,
-      },
-      game: {
-        id: e.gameId,
-        name: e.gameName,
-        categoryId: e.categoryId,
-        categoryName: e.categoryName,
-      },
-    };
-  });
-  res.send(rentals);
+    ON rentals."gameId"=games.id
+    WHERE games.id = $1`,
+        [gameId]
+      );
+      const rentals = rentalsResult.rows.map((e) => {
+        return {
+          ...e,
+          customer: {
+            id: e.customerId,
+            name: e.customerName,
+          },
+          game: {
+            id: e.gameId,
+            name: e.gameName,
+            categoryId: e.categoryId,
+            categoryName: e.categoryName,
+          },
+        };
+      });
+      return res.send(rentals);
+    } else {
+      const rentalsResult = await connection.query(`
+    SELECT rentals.*, customers.name as "customerName", categories.name as "categoryName",games."categoryId",games.name as "gameName" 
+    FROM rentals 
+    JOIN customers 
+      ON rentals."customerId"=customers.id 
+    JOIN categories 
+      ON rentals."gameId"=categories.id
+    JOIN games 
+      ON rentals."gameId"=games.id
+  `);
+      const rentals = rentalsResult.rows.map((e) => {
+        return {
+          ...e,
+          customer: {
+            id: e.customerId,
+            name: e.customerName,
+          },
+          game: {
+            id: e.gameId,
+            name: e.gameName,
+            categoryId: e.categoryId,
+            categoryName: e.categoryName,
+          },
+        };
+      });
+      return res.send(rentals);
+    }
+  } catch (error) {
+    res.sendStatus(500);
+  }
 });
 
 app.post("/rentals/:id/return", async (req, res) => {
