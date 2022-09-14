@@ -1,6 +1,6 @@
 <div align="center"><img style = "width:100%;"src="https://i.imgur.com/JLVAZoH.png"></img></div>
 <hr>
-<h2 align=center>BoarCamp (Back-End)</h2>
+<h2 align=center>BoardCamp (Back-End)</h2>
 <h3 align=center>Web development Project</h3>
 <hr>
 <h4 align=center>A api for a webapp that manages board game rentals</h4>
